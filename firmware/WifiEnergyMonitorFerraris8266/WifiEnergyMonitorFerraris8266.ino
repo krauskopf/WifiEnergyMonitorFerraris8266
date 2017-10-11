@@ -2,6 +2,8 @@
 #include <ESP8266WiFi.h>
 #include <ESP8266WebServer.h>
 #include <ESP8266mDNS.h>
+#include <WiFiUdp.h>          // OTA
+#include <ArduinoOTA.h>       // OTA
 #include <ArduinoJson.h>
 extern "C" {
   // include timer library for esp8266
@@ -29,6 +31,7 @@ extern "C" {
 // Configuration Settings
 //
 // #define CONFIG_DEBUG_NOTFOUND  // uncomment to return debug info when url not found.
+// #define CONFIG_ENABLE_OTA      // uncomment to enable firmware update over the air (OTA)
 #define NUM_SENSORS 2
 
 // 
@@ -180,6 +183,36 @@ void SENSOR_init() {
 //
 // WiFi
 //
+void WIFI_enableOTA() {
+  // Port defaults to 8266
+  // ArduinoOTA.setPort(8266);
+
+  // Hostname defaults to esp8266-[ChipID]
+  // ArduinoOTA.setHostname("myesp8266");
+
+  // No authentication by default
+  // ArduinoOTA.setPassword((const char *)"123");
+
+  ArduinoOTA.onStart([]() {
+    Serial.println("OTA: Start");
+  });
+  ArduinoOTA.onEnd([]() {
+    Serial.println("\nEnd");
+  });
+  ArduinoOTA.onProgress([](unsigned int progress, unsigned int total) {
+    Serial.printf("Progress: %u%%\r", (progress / (total / 100)));
+  });
+  ArduinoOTA.onError([](ota_error_t error) {
+    Serial.printf("OTA Error[%u]: ", error);
+    if (error == OTA_AUTH_ERROR) Serial.println("Auth Failed");
+    else if (error == OTA_BEGIN_ERROR) Serial.println("Begin Failed");
+    else if (error == OTA_CONNECT_ERROR) Serial.println("Connect Failed");
+    else if (error == OTA_RECEIVE_ERROR) Serial.println("Receive Failed");
+    else if (error == OTA_END_ERROR) Serial.println("End Failed");
+  });
+  ArduinoOTA.begin();
+}
+
 void WIFI_init() {
   Serial.print("Connecting to ");
   Serial.println(ssid);
@@ -193,6 +226,13 @@ void WIFI_init() {
   Serial.println("");
   Serial.print("WiFi connected, IP: ");
   Serial.println(WiFi.localIP());
+
+#ifdef CONFIG_ENABLE_OTA
+  Serial.println("OTA update is enabled!");
+  WIFI_enableOTA();
+#else  
+  Serial.println("OTA update is disabled!");
+#endif
 }
 
 
@@ -488,6 +528,9 @@ void setup() {
 //
 void loop() {
   g_server.handleClient();
+#ifdef CONFIG_ENABLE_OTA
+  ArduinoOTA.handle();
+#endif
 }
 
 
