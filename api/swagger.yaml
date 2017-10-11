@@ -1,0 +1,262 @@
+swagger: '2.0'
+info:
+  description: >-
+    This is an energy monitor for electromechanical induction watt-hour meters
+    ('Ferraris-Zähler')
+  version: 1.0.0
+  title: WifiEnergyMonitorFerraris
+  contact:
+    name: Sebastian Krauskopf
+    email: mail@sebakrau.de
+  license:
+    name: MIT
+    url: 'https://opensource.org/licenses/MIT'
+basePath: /api
+schemes:
+  - http
+paths:
+  /meters:
+    get:
+      summary: Gets the energy meters.
+      description: Returns the list of energy meters.
+      tags:
+        - EnergyMeters
+      responses:
+        '200':
+          description: A list of energy meters.
+          schema:
+            $ref: '#/definitions/Meters'
+  '/meters/{idMeter}':
+    get:
+      summary: Gets an energy meter.
+      description: Returns a single energy meter and its configuration.
+      tags:
+        - EnergyMeters
+      parameters:
+        - $ref: '#/parameters/idMeter'
+      responses:
+        '200':
+          description: A meter
+          schema:
+            $ref: '#/definitions/Meter'
+        '404':
+          description: The meter does not exist.
+  '/meters/{idMeter}/threshold':
+    get:
+      summary: Gets the threshold for the sensor of an energy meter.
+      description: >-
+        If the value detected by the sensor is above this threshold, than the
+        value is interpreted as digit and increments the counter.
+      tags:
+        - EnergyMeters
+      parameters:
+        - $ref: '#/parameters/idMeter'
+      responses:
+        '200':
+          description: The threshold value.
+          schema:
+            type: string
+        '404':
+          description: The meter does not exist.
+    put:
+      summary: Set the threshold for the sensor of an energy meter.
+      description: >-
+        If the value detected by the sensor is above this threshold, than the
+        value is interpreted as digit and increments the counter.
+      tags:
+        - EnergyMeters
+      parameters:
+        - $ref: '#/parameters/idMeter'
+      responses:
+        '200':
+          description: OK
+        '404':
+          description: The meter does not exist.
+  '/meters/{idMeter}/counters':
+    get:
+      summary: Gets the counters of an energy meter.
+      description: Returns the list of counters for an energy meter.
+      tags:
+        - EnergyMeters
+      parameters:
+        - $ref: '#/parameters/idMeter'
+      responses:
+        '200':
+          description: A list of counters for an energy meter.
+          schema:
+            $ref: '#/definitions/Counters'
+  '/meters/{idMeter}/counters/{idCounter}':
+    get:
+      summary: Gets a single counter of an energy meter.
+      description: Returns a counter with all its values for an energy meter.
+      tags:
+        - EnergyMeters
+      parameters:
+        - $ref: '#/parameters/idMeter'
+        - $ref: '#/parameters/idCounter'
+      responses:
+        '200':
+          description: A list of counters for an energy meter.
+          schema:
+            $ref: '#/definitions/Counters'
+        '404':
+          description: The meter or counter does not exist.
+  '/meters/{idMeter}/counters/{idCounter}/revolutions':
+    get:
+      summary: Gets the number of revolutions of the disc of an energy meter.
+      description: >-
+        Gets the revolutions counter will be incremented on every digit that is
+        detected by the sensor.
+      tags:
+        - EnergyMeters
+      parameters:
+        - $ref: '#/parameters/idMeter'
+        - $ref: '#/parameters/idCounter'
+      responses:
+        '200':
+          description: The value of the counter.
+          schema:
+            type: string
+        '404':
+          description: The meter or counter does not exist.
+    put:
+      summary: Set the number of revolutions of the disk of an energy meter.
+      description: >-
+        Allows to set the revolutions counter, which will be incremented on
+        every digit that is detected by the sensor.
+      tags:
+        - EnergyMeters
+      parameters:
+        - $ref: '#/parameters/idMeter'
+        - $ref: '#/parameters/idCounter'
+      responses:
+        '200':
+          description: OK
+        '404':
+          description: The meter or counter does not exist.
+  '/meters/{idMeter}/counters/{idCounter}/kWh':
+    get:
+      summary: Gets the kilowatt-hour of a counter of an energy meter.
+      description: >-
+        Gets the kilowatt-hour counter, which is calulated by the number of
+        revolutions of the disc.
+      tags:
+        - EnergyMeters
+      parameters:
+        - $ref: '#/parameters/idMeter'
+        - $ref: '#/parameters/idCounter'
+      responses:
+        '200':
+          description: The value of the counter.
+          schema:
+            type: string
+        '404':
+          description: The meter or counter does not exist.
+    put:
+      summary: Set the kilowatt-hour counter of an energy meter.
+      description: >-
+        Sets the kilowatt-hour counter, which is calulated by the number of
+        revolutions of the disc.
+      tags:
+        - EnergyMeters
+      parameters:
+        - $ref: '#/parameters/idMeter'
+        - $ref: '#/parameters/idCounter'
+      responses:
+        '200':
+          description: OK
+        '404':
+          description: The meter or counter does not exist.
+  /info:
+    get:
+      summary: Gets info about board and system status.
+      description: >-
+        Returns some infos about the current system status, as well as version
+        information.
+      tags:
+        - System
+      responses:
+        '200':
+          description: System info.
+          schema:
+            properties:
+              version:
+                type: string
+                description: >-
+                  The version of the installed firmware. Formatted as semver
+                  2.0.0
+              uptime:
+                type: string
+                description: The uptime of the board.
+definitions:
+  Meter:
+    description: >-
+      Contains the state of a single energy meter. There are 2 indepented
+      counters for a single meter which can be reset independently. (e.g. use
+      one as a day counter.)
+    required:
+      - id
+    properties:
+      id:
+        type: integer
+        description: >-
+          As multiple energy meters are supported, this is the id of the current
+          meter.
+      value:
+        type: integer
+        description: The current sensor value from the ADC.
+      threshold:
+        type: integer
+        description: The threshold above which the sensor value is interpreted as digit.
+      state:
+        type: boolean
+        description: True when the digit ist detected. (Above threshold)
+      counters:
+        $ref: '#/definitions/Counters'
+  Meters:
+    description: xxx
+    type: array
+    items:
+      $ref: '#/definitions/Meter'
+  Counter:
+    description: xxx
+    required:
+      - id
+      - revolutions
+    properties:
+      id:
+        type: integer
+        description: >-
+          As multiple counters per meter are supported, this is the id of the
+          counter for the given meter.
+      revolutions:
+        type: integer
+        description: Number of counted revolutions of the dial.
+      kWh:
+        type: number
+        description: The kilo watt hours counted.
+  Counters:
+    description: xxx
+    type: array
+    items:
+      $ref: '#/definitions/Counter'
+parameters:
+  idMeter:
+    name: idMeter
+    in: path
+    required: true
+    description: The index of the meter.
+    type: integer
+    minimum: 1
+    maximum: 2
+  idCounter:
+    name: idCounter
+    in: path
+    required: true
+    description: The index of the counter of a meter.
+    type: integer
+    minimum: 1
+    maximum: 2
+externalDocs:
+  description: Find out more about this project at
+  url: 'http://sebakrau.de'
