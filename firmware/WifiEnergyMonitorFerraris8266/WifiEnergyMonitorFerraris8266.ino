@@ -458,8 +458,8 @@ void WEB_handleApiCounters(int indexMeter) {
 void WEB_buildMeter(int indexMeter, JsonObject& jsonObject) {
   jsonObject["id"] = indexMeter + 1;
   jsonObject["value"] = g_sensors[indexMeter].value;
-  jsonObject["threshold"] = g_sensors[indexMeter].threshold;
   jsonObject["state"] = g_sensors[indexMeter].state;
+  jsonObject["threshold"] = g_sensors[indexMeter].threshold;
   jsonObject["revsPerKWh"] = g_sensors[indexMeter].revsPerKWh;
 
   JsonArray& counters = jsonObject.createNestedArray("counters");

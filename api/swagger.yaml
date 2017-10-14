@@ -59,10 +59,41 @@ paths:
         '404':
           description: The meter does not exist.
     put:
-      summary: Set the threshold for the sensor of an energy meter.
+      summary: Sets the threshold for the sensor of an energy meter.
       description: >-
         If the value detected by the sensor is above this threshold, than the
         value is interpreted as digit and increments the counter.
+      tags:
+        - EnergyMeters
+      parameters:
+        - $ref: '#/parameters/idMeter'
+      responses:
+        '200':
+          description: OK
+        '404':
+          description: The meter does not exist.
+  '/meters/{idMeter}/revsPerKWh':
+    get:
+      summary: Gets the number of revolutions per kilo watt-hour.
+      description: >-
+        Get the configuration value which describes the number of revolutions
+        necessary to consume 1 kilo watt-hour.
+      tags:
+        - EnergyMeters
+      parameters:
+        - $ref: '#/parameters/idMeter'
+      responses:
+        '200':
+          description: The revsPerKWh value.
+          schema:
+            type: string
+        '404':
+          description: The meter does not exist.
+    put:
+      summary: Sets the number of revolutions per kilo watt-hour.
+      description: >-
+        Set the configuration value which describes the number of revolutions
+        necessary to consume 1 kilo watt-hour.
       tags:
         - EnergyMeters
       parameters:
@@ -205,12 +236,19 @@ definitions:
       value:
         type: integer
         description: The current sensor value from the ADC.
-      threshold:
-        type: integer
-        description: The threshold above which the sensor value is interpreted as digit.
       state:
         type: boolean
         description: True when the digit ist detected. (Above threshold)
+      threshold:
+        type: integer
+        description: >-
+          Configuration value which describes the threshold above which the
+          sensor value is interpreted as digit.
+      revsPerKWh:
+        type: integer
+        description: >-
+          Configuration value which describes the number of revolutions
+          necessary to consume 1 kilo watt-hour.
       counters:
         $ref: '#/definitions/Counters'
   Meters:
