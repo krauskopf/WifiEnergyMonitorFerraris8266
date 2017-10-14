@@ -1,4 +1,26 @@
+/*
+The MIT License (MIT)
 
+Copyright (c) 2017 sebakrau
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+*/
 #include <ESP8266WiFi.h>
 #include <ESP8266WebServer.h>
 #include <ESP8266mDNS.h>
@@ -10,35 +32,8 @@ extern "C" {
   #include "user_interface.h"
 }
 #include "WifiClientPrint.h"
+#include "config.h"
 
-// 
-// Hardware Settings
-//
-#define APP_VERSION_MAJOR   0
-#define APP_VERSION_MINOR   1
-#define APP_VERSION_PATCH   0
-
-
-#define PIN_BOARD_LED       D0  // GPIO16, blue LED on NodeMCU
-#define PIN_SENSOR          A0  // ADC, sensor diode on ES-Fer
-
-#define PIN_STATUS_LED_1    D1  // GPIO5, red status LED on first ES-Fer
-#define PIN_SENSOR_LED_1    D2  // GPIO4, sensor LED on first ES-Fer
-#define PIN_STATUS_LED_2    D3  // GPIO0, red status LED on second ES-Fer
-#define PIN_SENSOR_LED_2    D4  // GPIO2, sensor LED on second ES-Fer
-
-//
-// Configuration Settings
-//
-// #define CONFIG_DEBUG_NOTFOUND  // uncomment to return debug info when url not found.
-// #define CONFIG_ENABLE_OTA      // uncomment to enable firmware update over the air (OTA)
-#define NUM_SENSORS 2
-
-// 
-// Network Settings
-//
-const char* ssid = "xxx";
-const char* password = "xxx";
 
 //
 // Types
@@ -47,7 +42,7 @@ typedef struct Sensor {
   unsigned int value;
   unsigned int threshold;
   unsigned int counter[2];
-  unsigned int roundsPerKWh;
+  unsigned int revsPerKWh;
   bool state;
   bool stateOld;
 } Sensor;
@@ -57,7 +52,8 @@ typedef struct Sensor {
 //
 ESP8266WebServer g_server(80);
 os_timer_t g_timer;
-Sensor g_sensors[NUM_SENSORS];
+Sensor g_sensors[CONFIG_NUM_SENSORS];
+
 
 
 
@@ -165,10 +161,10 @@ void SENSOR_init() {
   SENSOR_setSensorLed(1, true);
   SENSOR_switchMultiplexer(0);
 
-  for (int i = 0; i < NUM_SENSORS; i++) {
+  for (int i = 0; i < CONFIG_NUM_SENSORS; i++) {
     g_sensors[i].value = 0;
     g_sensors[i].threshold = 150;
-    g_sensors[i].roundsPerKWh = 150;
+    g_sensors[i].revsPerKWh = 75;
     g_sensors[i].counter[0] = 0;
     g_sensors[i].counter[1] = 0;
     g_sensors[i].state = false;
@@ -215,9 +211,9 @@ void WIFI_enableOTA() {
 
 void WIFI_init() {
   Serial.print("Connecting to ");
-  Serial.println(ssid);
+  Serial.println(CONFIG_WIFI_SSID);
 
-  WiFi.begin(ssid, password);
+  WiFi.begin(CONFIG_WIFI_SSID, CONFIG_WIFI_PASSWORD);
 
   while (WiFi.status() != WL_CONNECTED) {
     delay(500);
@@ -314,8 +310,9 @@ void WEB_handleApiInfo() {
   uptime += ":";
   uptime += sec % 60;
 
-  StaticJsonBuffer<200> jsonBuffer;
+  StaticJsonBuffer<300> jsonBuffer;
   JsonObject& root = jsonBuffer.createObject();
+  root["name"] = APP_NAME;
   root["version"] = version;
   root["uptime"] = uptime;
   WEB_sendJson(root);
@@ -349,6 +346,33 @@ void WEB_handleApiThreshold(int indexMeter) {
   }
 }
 
+void WEB_handleApiRevsPerKWh(int indexMeter) {
+  switch (g_server.method()) {
+    case HTTP_GET:
+      {
+        String content = "";
+        content += g_sensors[indexMeter].revsPerKWh;
+        g_server.send(200, "text/plain", content);
+      }
+      break;
+    case HTTP_PUT:
+      {
+        String value = g_server.arg("value");
+        if (value) {
+          g_sensors[indexMeter].revsPerKWh = value.toInt();
+          g_server.send(200, "text/plain", "OK!");
+        } else {
+          g_server.send(400, "text/plain", "Missing argument 'value'!");
+        }      
+      }
+      break;
+    default:
+      {
+        g_server.send(405, "text/plain", "The resource doesn't support the specified HTTP verb.!");
+      }
+      break;
+  }
+}
 
 void WEB_handleApiCounterRevolutions(int indexMeter, int indexCounter) {
   switch (g_server.method()) {
@@ -383,7 +407,7 @@ void WEB_handleApiCounterKWh(int indexMeter, int indexCounter) {
     case HTTP_GET:
       {
         String content = "";
-        content += static_cast<double>(g_sensors[indexMeter].counter[indexCounter]) / g_sensors[indexMeter].roundsPerKWh;
+        content += static_cast<double>(g_sensors[indexMeter].counter[indexCounter]) / g_sensors[indexMeter].revsPerKWh;
         g_server.send(200, "text/plain", content);
       }
       break;
@@ -391,7 +415,7 @@ void WEB_handleApiCounterKWh(int indexMeter, int indexCounter) {
       {
         String value = g_server.arg("value");
         if (value) {
-          g_sensors[indexMeter].counter[indexCounter] = strtod(value.c_str(), 0) * g_sensors[indexMeter].roundsPerKWh;
+          g_sensors[indexMeter].counter[indexCounter] = strtod(value.c_str(), 0) * g_sensors[indexMeter].revsPerKWh;
           g_server.send(200, "text/plain", "OK!");
         } else {
           g_server.send(400, "text/plain", "Missing argument 'value'!");
@@ -411,7 +435,7 @@ void WEB_handleApiCounterKWh(int indexMeter, int indexCounter) {
 void WEB_buildCounter(int indexMeter, int indexCounter, JsonObject& jsonObject) {
   jsonObject["id"] = indexCounter + 1;
   jsonObject["revolutions"] = g_sensors[indexMeter].counter[indexCounter];
-  jsonObject["kWh"] = static_cast<double>(g_sensors[indexMeter].counter[indexCounter]) / g_sensors[indexMeter].roundsPerKWh;  
+  jsonObject["kWh"] = static_cast<double>(g_sensors[indexMeter].counter[indexCounter]) / g_sensors[indexMeter].revsPerKWh;  
 }
 
 void WEB_handleApiCounter(int indexMeter, int indexCounter) {
@@ -436,6 +460,7 @@ void WEB_buildMeter(int indexMeter, JsonObject& jsonObject) {
   jsonObject["value"] = g_sensors[indexMeter].value;
   jsonObject["threshold"] = g_sensors[indexMeter].threshold;
   jsonObject["state"] = g_sensors[indexMeter].state;
+  jsonObject["revsPerKWh"] = g_sensors[indexMeter].revsPerKWh;
 
   JsonArray& counters = jsonObject.createNestedArray("counters");
   JsonObject& counter1 = counters.createNestedObject();
@@ -445,14 +470,14 @@ void WEB_buildMeter(int indexMeter, JsonObject& jsonObject) {
 }
 
 void WEB_handleApiMeter(int indexMeter) {
-  StaticJsonBuffer<200> jsonBuffer;
+  StaticJsonBuffer<400> jsonBuffer;
   JsonObject& root = jsonBuffer.createObject();
   WEB_buildMeter(indexMeter, root);
   WEB_sendJson(root);
 }
 
 void WEB_handleApiMeters() {
-  StaticJsonBuffer<500> jsonBuffer;
+  StaticJsonBuffer<600> jsonBuffer;
   JsonArray& root = jsonBuffer.createArray();
   JsonObject& meter1 = root.createNestedObject();
   WEB_buildMeter(0, meter1);
@@ -476,6 +501,7 @@ void WEB_init() {
   g_server.on("/api/meters", HTTP_GET, WEB_handleApiMeters);
   g_server.on("/api/meters/1", HTTP_GET, [](){ WEB_handleApiMeter(0); });
   g_server.on("/api/meters/1/threshold", HTTP_ANY, [](){ WEB_handleApiThreshold(0); });
+  g_server.on("/api/meters/1/revsPerKWh", HTTP_ANY, [](){ WEB_handleApiRevsPerKWh(0); });
   g_server.on("/api/meters/1/counters", HTTP_GET, [](){ WEB_handleApiCounters(0); });
   g_server.on("/api/meters/1/counters/1", HTTP_GET, [](){ WEB_handleApiCounter(0, 0); });
   g_server.on("/api/meters/1/counters/1/revolutions", HTTP_ANY, [](){ WEB_handleApiCounterRevolutions(0, 0); });
@@ -484,7 +510,8 @@ void WEB_init() {
   g_server.on("/api/meters/1/counters/2/revolutions", HTTP_ANY, [](){ WEB_handleApiCounterRevolutions(0, 1); });
   g_server.on("/api/meters/1/counters/1/kWh", HTTP_ANY, [](){ WEB_handleApiCounterKWh(0, 1); });
   g_server.on("/api/meters/2", HTTP_GET, [](){ WEB_handleApiMeter(1); });
-  g_server.on("/api/meters/2/threshold", HTTP_ANY, [](){ WEB_handleApiThreshold(0); });
+  g_server.on("/api/meters/2/threshold", HTTP_ANY, [](){ WEB_handleApiThreshold(1); });
+  g_server.on("/api/meters/2/revsPerKWh", HTTP_ANY, [](){ WEB_handleApiRevsPerKWh(1); });
   g_server.on("/api/meters/2/counters", HTTP_GET, [](){ WEB_handleApiCounters(1); });
   g_server.on("/api/meters/2/counters/1", HTTP_GET, [](){ WEB_handleApiCounter(1, 0); });
   g_server.on("/api/meters/1/counters/1/revolutions", HTTP_ANY, [](){ WEB_handleApiCounterRevolutions(1, 0); });

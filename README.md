@@ -1,20 +1,27 @@
 # WiFi Energy Monitor for electromechanical induction watt-hour meters ('Ferraris-Zähler')
 
-## Installation
-
 ## Usage
+The board has a RESTfull http interface which returns all data as json objects.
+There is an API description in [OpenAPI 2.0](https://github.com/OAI/OpenAPI-Specification) format in the folder `api`. 
+Use the [Swagger Editor](https://editor.swagger.io/) to open. The editor also allows you to generate client code 
+to access the API from the runtime/language of your choice.
 
-## Build
+## Build instructions
+
+### Hardware
+You can find a [fritzing](http://fritzing.org) schematic in the folder `hardware` which shows the pin layout. 
 
 ### Firmware
 To build the arduino sketch
 - Install Arduino IDE
  - Use the Arduino Board Manager to install the ESP8266 toolchain (https://github.com/esp8266/Arduino) 
  - Use the Arduino Library Manager to install ArduinoJSON (https://bblanchon.github.io/ArduinoJson/)
-
+- Open the sketch and modify the settings in the `config.h` header. You have to set the SSID and password of your wifi network.
+- Compile and download to nodemcu.
 
 ## History
 - 2017-oct-01: 0.1.0 - Created first version.
+- 2017-oct-12: 1.0.0 - Completed API.
 
 ## Credits
 - Sebastian Krauskopf (sebakrau)
