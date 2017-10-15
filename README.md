@@ -1,6 +1,18 @@
 # WiFi Energy Monitor for electromechanical induction watt-hour meters ('Ferraris-Zähler')
 
+This project contains a firmware and schematic for a WiFi based Energy Monitor which can be connected to a 
+electromechanical induction watt-hour meters ('Ferraris-Zähler') using the 
+[ELV Sensor ES-Fer](https://www.elv.de/homematic-zaehlersensor-ferraris-zaehler-es-fer.html), which is normally intended 
+to be used with the Homematic ecosystem. Using the transmission board described here, the sensor data is made available via
+WiFi and http RESTfull API. This way it can be used in many other scenarios outside Homematic (e.g. Node-Red).
+
+An [ESP8266 ESP-12E NodeMcu] WiFi board is used for connectivity and sensor evaluation. 
+
+![doc/overview.png](doc/overview.png)
+
 ## Usage
+
+### REST-API
 The board has a RESTfull http interface which returns all data as json objects.
 There is an API description in [OpenAPI 2.0](https://github.com/OAI/OpenAPI-Specification) format in the folder `api`. 
 It is recommended to use the [Swagger Editor](https://editor.swagger.io/) to open and view the API documentation. 
@@ -17,7 +29,8 @@ Here is also a short summary:
 You can find a [fritzing](http://fritzing.org) schematic in the folder `hardware` which shows the pin layout. 
 
 ### Firmware
-To build the arduino sketch
+To build the arduino sketch:
+
 - Install Arduino IDE
  - Use the Arduino Board Manager to install the ESP8266 toolchain (https://github.com/esp8266/Arduino) 
  - Use the Arduino Library Manager to install ArduinoJSON (https://bblanchon.github.io/ArduinoJson/)
