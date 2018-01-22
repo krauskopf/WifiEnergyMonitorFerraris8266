@@ -111,8 +111,10 @@ void SENSOR_setSensorLed(int index, bool enabled) {
 void SENSOR_sample(void *pArg) {
   const int index = 0;
 
-  // read sensor value through adc
+  // read sensor value through adc. Active LED only for a short time to save energy.
+  SENSOR_setSensorLed(index, true);
   g_sensors[index].value = analogRead(PIN_SENSOR);
+  SENSOR_setSensorLed(index, false);
 
   // debounce the sensor value to prevent that a flickering or jittering 
   // sensorValue will falsly increase the counter.
@@ -147,7 +149,7 @@ void SENSOR_sample(void *pArg) {
 } 
 
 void SENSOR_switchMultiplexer(int index) {
-  // TODO
+  // TODO. Use multiplexer to support multiple connected sensors.
 }
 
 void SENSOR_init() {
@@ -157,8 +159,8 @@ void SENSOR_init() {
   pinMode(PIN_SENSOR_LED_2, OUTPUT); 
   SENSOR_setStatusLed(0, false);
   SENSOR_setStatusLed(1, false);
-  SENSOR_setSensorLed(0, true);
-  SENSOR_setSensorLed(1, true);
+  SENSOR_setSensorLed(0, false);
+  SENSOR_setSensorLed(1, false);
   SENSOR_switchMultiplexer(0);
 
   for (int i = 0; i < CONFIG_NUM_SENSORS; i++) {
@@ -257,12 +259,12 @@ void WEB_handleNotFound() {
 }
 
 void WEB_handleRoot() {
-  char temp[500];
+  char temp[1024];
   int sec = millis() / 1000;
   int min = sec / 60;
   int hr = min / 60;
 
-  snprintf(temp, sizeof(temp),
+  int cx = snprintf(temp, sizeof(temp),
     "<html>\
       <head>\
         <meta http-equiv='refresh' content='5'/>\
@@ -275,12 +277,26 @@ void WEB_handleRoot() {
         <h1>WifiEnergyMonitor for Ferraris-Counter (ESP8266)!</h1>\
         <p>Version: %d.%d.%d</p>\
         <p>Uptime: %02d:%02d:%02d</p>\
-      </body>\
-    </html>",
-
+        <div style=\"white-space: pre-wrap;\">"
+    ,
     APP_VERSION_MAJOR, APP_VERSION_MINOR, APP_VERSION_PATCH,
     hr, min % 60, sec % 60
   );
+
+  if (cx < 0) {
+    g_server.send(200, "text/html", "Error: buffer too small.");  
+  } else {
+
+    // append meter info
+    StaticJsonBuffer<400> jsonBuffer;
+    JsonObject& root = jsonBuffer.createObject();
+    WEB_buildMeter(0, root);
+    cx += root.prettyPrintTo(&temp[cx], sizeof(temp) - strlen("</div></body></html> ") - cx);
+  
+    // append closing tags
+    strcat(&temp[cx], "</div></body></html>");
+  }
+  
   g_server.send(200, "text/html", temp);
 }
 
@@ -547,6 +563,7 @@ void setup() {
 
   // Go, go, go...
   Serial.println("READY");
+  LED_board_set(false);
 }
 
 
