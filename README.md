@@ -39,6 +39,15 @@ The color layout of the female rj11 connector is shown below:
 
 ![doc/rj11_female.png](doc/rj11_female.png)
 
+| Pin | Description   |
+|-----|---------------|
+| 1   | not connected |
+| 2   | GND           |
+| 3   | Power Supply 4,4V (3,3V works too)  |
+| 4   | Sensor LED    |
+| 5   | Sensor Signal |
+| 6   | Status LED    |
+
 ### Firmware
 
 To build the arduino sketch:
